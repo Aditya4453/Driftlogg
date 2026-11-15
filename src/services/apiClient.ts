@@ -3,6 +3,11 @@ import axios, { AxiosError } from "axios"
 export const API_BASE_URL =
   import.meta.env.VITE_API_BASE_URL || "http://localhost:5000/api"
 
+export interface ApiErrorResponse {
+  message?: string
+  error?: string
+}
+
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
   headers: {
@@ -12,9 +17,15 @@ export const apiClient = axios.create({
   timeout: 10000,
 })
 
+// Enforce withCredentials: true on every request
+apiClient.interceptors.request.use((config) => {
+  config.withCredentials = true
+  return config
+})
+
 apiClient.interceptors.response.use(
   (response) => response,
-  (error: AxiosError<{ message?: string; error?: string }>) => {
+  (error: AxiosError<ApiErrorResponse>) => {
     let message = "An unexpected error occurred"
     if (error.response?.data?.message) {
       message = error.response.data.message
@@ -24,8 +35,9 @@ apiClient.interceptors.response.use(
       message = error.message
     }
     const normalizedError = new Error(message)
-      ; (normalizedError as any).status = error.response?.status
-      ; (normalizedError as any).code = error.code
+    ;(normalizedError as any).status = error.response?.status
+    ;(normalizedError as any).code = error.code
+    ;(normalizedError as any).response = error.response
     return Promise.reject(normalizedError)
   },
 )

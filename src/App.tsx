@@ -22,7 +22,7 @@ export default function App() {
   const [currentUser, setCurrentUser] = useState<User | null>(null)
   const [projects, setProjects] = useState<Project[]>([])
   const [reports, setReports] = useState<RiskReport[]>([])
-  const [currentProjectId] = useState<string>("proj_001")
+  const [activeProjectId, setActiveProjectId] = useState<string | null>(null)
 
   const [showScan, setShowScan] = useState(false)
   const [inputMode, setInputMode] = useState<"github" | "upload">("github")
@@ -35,39 +35,122 @@ export default function App() {
 
   const pollingTimerRef = useRef<number | null>(null)
 
-  // Fetch initial domain data via contract services
+  // 1. Initial session load via getMe()
   useEffect(() => {
     let mounted = true
-    const initData = async () => {
-      const [user, projs, initialReports] = await Promise.all([
-        authService.getMe(),
-        projectService.getProjects(),
-        scanService.getProjectReport(currentProjectId),
-      ])
-      if (mounted) {
-        setCurrentUser(user)
-        setProjects(projs)
-        setReports(initialReports)
+    const checkSession = async () => {
+      try {
+        const user = await authService.getMe()
+        if (mounted) {
+          setCurrentUser(user)
+        }
+      } catch {
+        if (mounted) {
+          setCurrentUser(null)
+        }
       }
     }
-    initData()
+    checkSession()
     return () => {
       mounted = false
+    }
+  }, [])
+
+  // 2. Synchronize workspace data strictly with currentUser
+  useEffect(() => {
+    let mounted = true
+
+    if (!currentUser) {
+      setProjects([])
+      setActiveProjectId(null)
+      setReports([])
+      setInspected(null)
+      return
+    }
+
+    const loadUserData = async () => {
+      try {
+        const userProjects = await projectService.getProjects()
+        if (!mounted) return
+        setProjects(userProjects)
+
+        if (userProjects.length > 0) {
+          const firstProjId = userProjects[0]._id
+          setActiveProjectId(firstProjId)
+          try {
+            const projectReports =
+              await scanService.getProjectReport(firstProjId)
+            if (mounted) {
+              setReports(projectReports)
+            }
+          } catch {
+            if (mounted) {
+              setReports([])
+            }
+          }
+        } else {
+          setActiveProjectId(null)
+          setReports([])
+        }
+      } catch {
+        if (mounted) {
+          setProjects([])
+          setActiveProjectId(null)
+          setReports([])
+        }
+      }
+    }
+
+    loadUserData()
+
+    return () => {
+      mounted = false
+    }
+  }, [currentUser])
+
+  // Cleanup polling timer on unmount
+  useEffect(() => {
+    return () => {
       if (pollingTimerRef.current) {
         window.clearInterval(pollingTimerRef.current)
       }
     }
-  }, [currentProjectId])
+  }, [])
 
   const goDashboard = () => {
     setPage("dashboard")
     setMenuOpen(false)
   }
 
-  const openProject = () => {
+  const openProject = async (projectId?: string) => {
+    const targetId = projectId || activeProjectId || projects[0]?._id
+    if (targetId) {
+      setActiveProjectId(targetId)
+      try {
+        const projectReports = await scanService.getProjectReport(targetId)
+        setReports(projectReports)
+      } catch {
+        setReports([])
+      }
+    }
     setPage("project")
     setMenuOpen(false)
     window.scrollTo({ top: 0, behavior: "smooth" })
+  }
+
+  const handleLogout = async () => {
+    try {
+      await authService.logout()
+    } catch {
+      // ignore
+    }
+    setCurrentUser(null)
+    setProjects([])
+    setActiveProjectId(null)
+    setReports([])
+    setInspected(null)
+    setPage("home")
+    setMenuOpen(false)
   }
 
   // Contract-driven polling scan flow
@@ -79,54 +162,92 @@ export default function App() {
     setScanRunning(true)
     setScanStage(1)
 
-    // 1. Invoke scan service contract
-    const scan = await scanService.startAnalysis(currentProjectId, payload)
+    let targetProjectId = activeProjectId
+    if (!targetProjectId) {
+      try {
+        const projectName =
+          payload.sourceType === "github_repo" && payload.repositoryUrl
+            ? payload.repositoryUrl
+                .split("/")
+                .filter(Boolean)
+                .pop()
+                ?.replace(/\.git$/, "") || "Repository Project"
+            : "Manifest Project"
 
-    // 2. Poll scan status and advance orbital visual stages
-    let currentStep = 1
-    if (pollingTimerRef.current) {
-      window.clearInterval(pollingTimerRef.current)
+        const created = await projectService.createProject({
+          name: projectName,
+          sourceType: payload.sourceType,
+          repositoryUrl: payload.repositoryUrl,
+          description:
+            payload.sourceType === "github_repo"
+              ? payload.repositoryUrl
+              : "Uploaded package.json",
+        })
+        targetProjectId = created._id
+        setActiveProjectId(created._id)
+      } catch {
+        targetProjectId = "default"
+      }
     }
 
-    pollingTimerRef.current = window.setInterval(
-      async () => {
-        currentStep += 1
-        setScanStage(currentStep)
+    try {
+      // 1. Invoke scan service contract
+      const scan = await scanService.startAnalysis(targetProjectId, payload)
 
-        // Query status from contract service
-        const latestScan = await scanService.getScanById(scan._id)
+      // 2. Poll scan status and advance orbital visual stages
+      let currentStep = 1
+      if (pollingTimerRef.current) {
+        window.clearInterval(pollingTimerRef.current)
+      }
 
-        if (currentStep >= 4 || latestScan.status === "completed") {
-          if (pollingTimerRef.current) {
-            window.clearInterval(pollingTimerRef.current)
-            pollingTimerRef.current = null
+      pollingTimerRef.current = window.setInterval(
+        async () => {
+          currentStep += 1
+          setScanStage(currentStep)
+
+          // Query status from contract service
+          const latestScan = await scanService.getScanById(scan._id)
+
+          if (currentStep >= 4 || latestScan.status === "completed") {
+            if (pollingTimerRef.current) {
+              window.clearInterval(pollingTimerRef.current)
+              pollingTimerRef.current = null
+            }
+
+            // Fetch fresh risk reports from backend contract
+            const [updatedReports, updatedProjects] = await Promise.all([
+              scanService.getProjectReport(targetProjectId),
+              projectService.getProjects(),
+            ])
+            setReports(updatedReports)
+            setProjects(updatedProjects)
+
+            setScanRunning(false)
+            setShowScan(false)
+            openProject(targetProjectId)
+          } else if (latestScan.status === "failed") {
+            if (pollingTimerRef.current) {
+              window.clearInterval(pollingTimerRef.current)
+              pollingTimerRef.current = null
+            }
+            setScanRunning(false)
+            alert(
+              latestScan.errorMessage || "Scan analysis encountered an error.",
+            )
           }
-
-          // Fetch fresh risk reports from backend contract
-          const updatedReports =
-            await scanService.getProjectReport(currentProjectId)
-          setReports(updatedReports)
-
-          // Refresh project list
-          const updatedProjects = await projectService.getProjects()
-          setProjects(updatedProjects)
-
-          setScanRunning(false)
-          setShowScan(false)
-          openProject()
-        } else if (latestScan.status === "failed") {
-          if (pollingTimerRef.current) {
-            window.clearInterval(pollingTimerRef.current)
-            pollingTimerRef.current = null
-          }
-          setScanRunning(false)
-          alert(
-            latestScan.errorMessage || "Scan analysis encountered an error.",
-          )
-        }
-      },
-      600,
-    )
+        },
+        600,
+      )
+    } catch (err: unknown) {
+      if (pollingTimerRef.current) {
+        window.clearInterval(pollingTimerRef.current)
+        pollingTimerRef.current = null
+      }
+      setScanRunning(false)
+      const message =
+        err instanceof Error ? err.message : "Failed to initiate scan"
+      alert(message)
+    }
   }
 
   if (page === "home") {
@@ -143,8 +264,7 @@ export default function App() {
       <AuthPage
         mode={page}
         onHome={() => setPage("home")}
-        onComplete={async () => {
-          const user = await authService.getMe()
+        onComplete={(user: User) => {
           setCurrentUser(user)
           goDashboard()
         }}
@@ -158,6 +278,7 @@ export default function App() {
   return (
     <AppShell
       page={page}
+      currentUser={currentUser}
       menuOpen={menuOpen}
       projectCount={projects.length}
       isAdmin={isAdmin}
@@ -185,13 +306,16 @@ export default function App() {
           onBack={goDashboard}
         />
       ) : page === "activity" ? (
-        <ActivityPage onOpen={openProject} />
+        <ActivityPage
+          onOpen={openProject}
+          onScan={() => setPage("scan")}
+        />
       ) : page === "settings" ? (
         <SettingsPage />
       ) : page === "docs" ? (
         <DocumentationPage onScan={() => setPage("scan")} />
       ) : page === "profile" ? (
-        <ProfilePage />
+        <ProfilePage currentUser={currentUser} onLogout={handleLogout} />
       ) : page === "dashboard" ? (
         <OverviewDashboard
           projects={projects}
@@ -202,6 +326,11 @@ export default function App() {
         />
       ) : (
         <ProjectDetailView
+          project={
+            projects.find((p) => p._id === activeProjectId) ||
+            projects[0] ||
+            null
+          }
           packages={reports.map((r) => ({
             _id: r._id,
             name: r.packageName,

@@ -16,4 +16,3 @@ export interface Dependency {
   version: string
   rawData?: Record<string, unknown>
 }
-

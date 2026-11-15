@@ -1,10 +1,11 @@
 import React from "react"
 import { Topbar } from "./Topbar"
 import { Sidebar } from "./Sidebar"
-import type { Page } from "../../types"
+import type { Page, User } from "../../types"
 
 interface AppShellProps {
   page: Page
+  currentUser?: User | null
   menuOpen: boolean
   projectCount?: number
   isAdmin?: boolean
@@ -15,6 +16,7 @@ interface AppShellProps {
 
 export function AppShell({
   page,
+  currentUser,
   menuOpen,
   projectCount = 4,
   isAdmin = true,
@@ -25,6 +27,7 @@ export function AppShell({
   return (
     <div className="app-shell">
       <Topbar
+        currentUser={currentUser}
         menuOpen={menuOpen}
         onToggleMenu={onToggleMenu}
         onGoDashboard={() => onNavigate("dashboard")}

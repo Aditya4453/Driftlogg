@@ -3,7 +3,7 @@ import type { Project } from "../../types"
 
 interface ProjectDirectoryProps {
   projects: Project[]
-  onOpen: () => void
+  onOpen: (projectId?: string) => void
   onScan: () => void
 }
 
@@ -34,57 +34,106 @@ export function ProjectDirectory({
           Connect project
         </button>
       </div>
-      <div className="directory-map">
-        <div className="directory-axis">
-          <span>Priority</span>
-          <span>Project / source</span>
-          <span>Observed</span>
-          <span>Release signal</span>
+      {projects.length === 0 ? (
+        <div
+          className="empty-state"
+          style={{
+            padding: "56px 24px",
+            textAlign: "center",
+            border: "1px dashed #202a3a",
+            borderRadius: "10px",
+            background: "rgba(10, 15, 24, 0.4)",
+            margin: "24px 0 32px",
+          }}
+        >
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginBottom: "14px",
+              color: "#6b81ff",
+            }}
+          >
+            <Icon name="box" size={36} />
+          </div>
+          <h3
+            style={{ fontSize: "17px", color: "#f2f5f9", fontWeight: "600" }}
+          >
+            No projects monitored yet
+          </h3>
+          <p
+            style={{
+              color: "#768398",
+              fontSize: "13px",
+              maxWidth: "440px",
+              margin: "8px auto 20px",
+              lineHeight: "1.5",
+            }}
+          >
+            Connect a GitHub repository or upload a manifest to run your first
+            dependency risk scan.
+          </p>
+          <button className="primary-button" onClick={onScan}>
+            <Icon name="plus" />
+            Connect first project
+          </button>
         </div>
-        {projects.map((project, index) => {
-          const high = project.high ?? 0
-          const ready = high === 0
-          const isGitHub =
-            project.sourceType === "github_repo" || project.source === "GitHub"
+      ) : (
+        <div className="directory-map">
+          <div className="directory-axis">
+            <span>Priority</span>
+            <span>Project / source</span>
+            <span>Observed</span>
+            <span>Release signal</span>
+          </div>
+          {projects.map((project, index) => {
+            const high = project.high ?? 0
+            const ready = high === 0
+            const isGitHub =
+              project.sourceType === "github_repo" ||
+              project.source === "GitHub"
 
-          return (
-            <button
-              className={`directory-row ${ready ? "is-ready" : "needs-review"}`}
-              onClick={onOpen}
-              key={project._id || project.name}
-            >
-              <span className="priority-code">
-                {high > 0 ? `P${index + 1}` : "CLEAR"}
-              </span>
-              <div className="directory-name">
-                <span className="project-icon">
-                  <Icon name={isGitHub ? "github" : "file"} />
+            return (
+              <button
+                className={`directory-row ${ready ? "is-ready" : "needs-review"}`}
+                onClick={() => onOpen(project._id)}
+                key={project._id || project.name}
+              >
+                <span className="priority-code">
+                  {high > 0 ? `P${index + 1}` : "CLEAR"}
                 </span>
-                <div>
-                  <strong>{project.name}</strong>
-                  <small>
-                    {project.detail ||
-                      project.description ||
-                      project.repositoryUrl ||
-                      "Connected repo"}
-                  </small>
+                <div className="directory-name">
+                  <span className="project-icon">
+                    <Icon name={isGitHub ? "github" : "file"} />
+                  </span>
+                  <div>
+                    <strong>{project.name}</strong>
+                    <small>
+                      {project.detail ||
+                        project.description ||
+                        project.repositoryUrl ||
+                        "Connected repo"}
+                    </small>
+                  </div>
                 </div>
-              </div>
-              <div className="directory-observed">
-                <strong>{project.deps ?? 0}</strong>
-                <small>packages</small>
-              </div>
-              <div className="directory-signal">
-                <div>
-                  <i style={{ width: `${Math.max(4, high * 12)}%` }} />
-                  <span>{high > 0 ? `${high} blockers` : "Clear to ship"}</span>
+                <div className="directory-observed">
+                  <strong>{project.deps ?? 0}</strong>
+                  <small>packages</small>
                 </div>
-                <Icon name="arrow" size={16} />
-              </div>
-            </button>
-          )
-        })}
-      </div>
+                <div className="directory-signal">
+                  <div>
+                    <i style={{ width: `${Math.max(4, high * 12)}%` }} />
+                    <span>
+                      {high > 0 ? `${high} blockers` : "Clear to ship"}
+                    </span>
+                  </div>
+                  <Icon name="arrow" size={16} />
+                </div>
+              </button>
+            )
+          })}
+        </div>
+      )}
       <div className="directory-footnotes">
         <article>
           <span>01</span>
