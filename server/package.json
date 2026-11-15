@@ -1,0 +1,33 @@
+{
+  "name": "driftlogg-server",
+  "version": "1.0.0",
+  "private": true,
+  "description": "DriftLogg backend - MongoDB/Mongoose database layer",
+  "type": "module",
+  "main": "src/server.js",
+  "engines": {
+    "node": ">=20.19.0"
+  },
+  "scripts": {
+    "start": "node src/server.js",
+    "dev": "nodemon src/server.js",
+    "test": "node --test --test-concurrency=1 tests/*.test.js",
+    "db:check": "node scripts/db-check.js",
+    "db:demo": "node scripts/db-demo.js",
+    "db:demo:remove": "node scripts/db-demo.js --remove"
+  },
+  "dependencies": {
+    "bcryptjs": "^3.0.3",
+    "cookie-parser": "^1.4.7",
+    "cors": "^2.8.6",
+    "dotenv": "^18.0.10",
+    "express": "^5.3.0",
+    "jsonwebtoken": "^9.0.3",
+    "mongoose": "^9.12.1"
+  },
+  "devDependencies": {
+    "mongodb-memory-server": "^11.3.0",
+    "nodemon": "^3.1.14",
+    "supertest": "^7.3.2"
+  }
+}

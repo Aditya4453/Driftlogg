@@ -1,6 +1,8 @@
 import { Icon, Logo } from "../common"
+import type { User } from "../../types"
 
 interface TopbarProps {
+  currentUser?: User | null
   menuOpen: boolean
   onToggleMenu: () => void
   onGoDashboard: () => void
@@ -9,12 +11,25 @@ interface TopbarProps {
 }
 
 export function Topbar({
+  currentUser,
   menuOpen,
   onToggleMenu,
   onGoDashboard,
   onOpenSettings,
   onOpenProfile,
 }: TopbarProps) {
+  const userInitials = currentUser?.name
+    ? currentUser.name
+        .split(" ")
+        .filter(Boolean)
+        .map((part) => part[0])
+        .join("")
+        .slice(0, 2)
+        .toUpperCase()
+    : currentUser?.email
+      ? currentUser.email.slice(0, 2).toUpperCase()
+      : "DV"
+
   return (
     <header className="topbar">
       <button
@@ -43,8 +58,13 @@ export function Topbar({
           className="avatar"
           onClick={onOpenProfile}
           aria-label="Open profile"
+          title={
+            currentUser
+              ? `${currentUser.name} (${currentUser.email})`
+              : "Open profile"
+          }
         >
-          DV
+          {userInitials}
         </button>
       </div>
     </header>

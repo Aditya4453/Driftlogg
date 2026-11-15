@@ -27,4 +27,3 @@ export interface RiskReport {
   suggestion: string
   createdAt: string
 }
-
