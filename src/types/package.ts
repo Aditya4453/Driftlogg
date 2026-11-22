@@ -19,6 +19,9 @@ export interface PackageDependency {
     deprecated?: boolean
   }
   suggestion?: string
+  isDirect?: boolean
+  dependencyType?: string
+  workspace?: string
 }
 
 export interface HealthSignals {

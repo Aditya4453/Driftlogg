@@ -56,9 +56,7 @@ export function ProjectDirectory({
           >
             <Icon name="box" size={36} />
           </div>
-          <h3
-            style={{ fontSize: "17px", color: "#f2f5f9", fontWeight: "600" }}
-          >
+          <h3 style={{ fontSize: "17px", color: "#f2f5f9", fontWeight: "600" }}>
             No projects monitored yet
           </h3>
           <p
@@ -95,7 +93,9 @@ export function ProjectDirectory({
 
             return (
               <button
-                className={`directory-row ${ready ? "is-ready" : "needs-review"}`}
+                className={`directory-row ${
+                  ready ? "is-ready" : "needs-review"
+                }`}
                 onClick={() => onOpen(project._id)}
                 key={project._id || project.name}
               >

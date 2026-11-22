@@ -71,7 +71,11 @@ export function OverviewDashboard({
               <span>/ 100</span>
             </div>
             <div className="readiness-copy">
-              <span className={`verdict ${!hasProjects ? "ready" : isBlocked ? "review" : "ready"}`}>
+              <span
+                className={`verdict ${
+                  !hasProjects ? "ready" : isBlocked ? "review" : "ready"
+                }`}
+              >
                 {!hasProjects
                   ? "Ready to scan"
                   : isBlocked
@@ -82,7 +86,9 @@ export function OverviewDashboard({
                 {!hasProjects
                   ? "No dependencies analyzed yet."
                   : isBlocked
-                    ? `${totalHigh} ${totalHigh === 1 ? "dependency is" : "dependencies are"} blocking a clean release.`
+                    ? `${totalHigh} ${
+                        totalHigh === 1 ? "dependency is" : "dependencies are"
+                      } blocking a clean release.`
                     : "All observed codebases are currently clear to ship."}
               </h2>
               <p>
@@ -104,10 +110,7 @@ export function OverviewDashboard({
               <i
                 className="scale-marker"
                 style={{
-                  left:
-                    readinessScore !== null
-                      ? `${readinessScore}%`
-                      : "50%",
+                  left: readinessScore !== null ? `${readinessScore}%` : "50%",
                 }}
               />
             </div>
@@ -148,7 +151,11 @@ export function OverviewDashboard({
           <div className={`telemetry-row ${totalHigh > 0 ? "danger" : ""}`}>
             <span>Critical signals</span>
             <strong>{String(totalHigh).padStart(2, "0")}</strong>
-            <small>{totalHigh > 0 ? `${totalHigh} need action now` : "Zero critical blockers"}</small>
+            <small>
+              {totalHigh > 0
+                ? `${totalHigh} need action now`
+                : "Zero critical blockers"}
+            </small>
           </div>
         </article>
       </section>
@@ -190,7 +197,14 @@ export function OverviewDashboard({
             marginBottom: "32px",
           }}
         >
-          <div style={{ display: "flex", justifyContent: "center", marginBottom: "14px", color: "#6b81ff" }}>
+          <div
+            style={{
+              display: "flex",
+              justifyContent: "center",
+              marginBottom: "14px",
+              color: "#6b81ff",
+            }}
+          >
             <Icon name="box" size={36} />
           </div>
           <h3 style={{ fontSize: "17px", color: "#f2f5f9", fontWeight: "600" }}>
@@ -205,7 +219,8 @@ export function OverviewDashboard({
               lineHeight: "1.5",
             }}
           >
-            Run your first scan to analyze dependency risks, flag abandoned packages, and establish release readiness.
+            Run your first scan to analyze dependency risks, flag abandoned
+            packages, and establish release readiness.
           </p>
           <button className="primary-button" onClick={onNewScan}>
             <Icon name="plus" />

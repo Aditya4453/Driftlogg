@@ -1,17 +1,25 @@
 import { useState } from "react"
+
 import { Icon } from "../../components/common"
+
 import type { SettingsSection } from "../../types"
 
 export function SettingsPage() {
   const [section, setSection] = useState<SettingsSection>("Risk policy")
+
   const [security, setSecurity] = useState(true)
+
   const [archive, setArchive] = useState(true)
+
   const [saved, setSaved] = useState(false)
 
   const sections: SettingsSection[] = [
     "Risk policy",
+
     "Notifications",
+
     "Integrations",
+
     "Workspace",
   ]
 
@@ -39,6 +47,7 @@ export function SettingsPage() {
               className={section === item ? "active" : ""}
               onClick={() => {
                 setSection(item)
+
                 setSaved(false)
               }}
             >
@@ -146,6 +155,7 @@ export function SettingsPage() {
               className="secondary-button"
               onClick={() => {
                 setSecurity(true)
+
                 setArchive(true)
               }}
             >

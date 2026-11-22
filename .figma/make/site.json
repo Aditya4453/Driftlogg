@@ -1,0 +1,10 @@
+{
+  "description": "Helps software engineers scan projects for abandoned and high-risk open-source dependencies, review maintenance signals, and address risks before deployment.",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}

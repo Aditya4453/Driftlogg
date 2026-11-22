@@ -1,8 +1,10 @@
 import { Icon } from "../../components/common"
+
 import { PublicHeader, PublicFooter } from "../../components/layout"
 
 interface HomePageProps {
   onLogin: () => void
+
   onSignup: () => void
 }
 

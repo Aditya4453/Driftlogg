@@ -1,46 +1,66 @@
 import React, { useState } from "react"
+
 import { Icon, Logo } from "../../components/common"
+
 import { authService } from "../../services"
+
 import type { User } from "../../types"
 
 interface AuthPageProps {
   mode: "login" | "signup"
+
   onSwitch: () => void
+
   onComplete: (user: User) => void
+
   onHome: () => void
 }
 
 export function AuthPage({
   mode,
+
   onSwitch,
+
   onComplete,
+
   onHome,
 }: AuthPageProps) {
   const signup = mode === "signup"
 
   const [name, setName] = useState("")
+
   const [email, setEmail] = useState("")
+
   const [password, setPassword] = useState("")
+
   const [showPassword, setShowPassword] = useState(false)
+
   const [errorMessage, setErrorMessage] = useState("")
+
   const [loading, setLoading] = useState(false)
 
   const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault()
+
     setErrorMessage("")
+
     setLoading(true)
 
     try {
       let user: User
+
       if (signup) {
         user = await authService.register({
           name: name.trim(),
+
           email: email.trim(),
+
           password,
         })
       } else {
         user = await authService.login({ email: email.trim(), password })
       }
+
       onComplete(user)
     } catch (err: any) {
       setErrorMessage(
@@ -53,6 +73,7 @@ export function AuthPage({
 
   const handleSwitchMode = () => {
     setErrorMessage("")
+
     onSwitch()
   }
 
@@ -105,15 +126,25 @@ export function AuthPage({
               className="auth-error-banner"
               style={{
                 display: "flex",
+
                 alignItems: "center",
+
                 gap: "10px",
+
                 padding: "10px 14px",
+
                 marginBottom: "16px",
+
                 borderRadius: "8px",
+
                 backgroundColor: "rgba(239, 82, 94, 0.12)",
+
                 border: "1px solid rgba(239, 82, 94, 0.35)",
+
                 color: "#ff6b76",
+
                 fontSize: "13px",
+
                 lineHeight: "1.4",
               }}
             >

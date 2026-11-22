@@ -21,6 +21,8 @@ export const projectService = {
     description?: string
     sourceType: string
     repositoryUrl?: string
+    packageJson?: Record<string, unknown>
+    packageLockJson?: Record<string, unknown>
   }): Promise<Project> {
     const response = await apiClient.post<Project>("/projects", payload)
     return response.data

@@ -5,28 +5,36 @@ export const API_BASE_URL =
 
 export interface ApiErrorResponse {
   message?: string
+
   error?: string
 }
 
 export const apiClient = axios.create({
   baseURL: API_BASE_URL,
+
   headers: {
     "Content-Type": "application/json",
   },
+
   withCredentials: true,
+
   timeout: 10000,
 })
 
 // Enforce withCredentials: true on every request
+
 apiClient.interceptors.request.use((config) => {
   config.withCredentials = true
+
   return config
 })
 
 apiClient.interceptors.response.use(
   (response) => response,
+
   (error: AxiosError<ApiErrorResponse>) => {
     let message = "An unexpected error occurred"
+
     if (error.response?.data?.message) {
       message = error.response.data.message
     } else if (error.response?.data?.error) {
@@ -34,10 +42,12 @@ apiClient.interceptors.response.use(
     } else if (error.message) {
       message = error.message
     }
+
     const normalizedError = new Error(message)
     ;(normalizedError as any).status = error.response?.status
     ;(normalizedError as any).code = error.code
     ;(normalizedError as any).response = error.response
+
     return Promise.reject(normalizedError)
   },
 )

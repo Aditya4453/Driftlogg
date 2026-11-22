@@ -19,4 +19,5 @@ export interface Project {
   medium?: number
   low?: number
   scanned?: string
+  lastScanned?: string
 }

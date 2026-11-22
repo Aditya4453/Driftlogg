@@ -1,15 +1,34 @@
-import { useState } from "react"
+import { useEffect, useState } from "react"
+
 import { Icon } from "../../components/common"
-import type { User } from "../../types"
+
+import authService from "../../services/auth.service"
+
+import type { User, UserSummary } from "../../types"
 
 interface ProfilePageProps {
   currentUser?: User | null
+  userSummary?: UserSummary | null
   onLogout?: () => void
+  onProfileUpdated?: (user: User) => void
 }
 
-export function ProfilePage({ currentUser, onLogout }: ProfilePageProps) {
+export function ProfilePage({
+  currentUser,
+  userSummary,
+  onLogout,
+  onProfileUpdated,
+}: ProfilePageProps) {
   const [editing, setEditing] = useState(false)
+  const [saving, setSaving] = useState(false)
   const [name, setName] = useState(currentUser?.name || "")
+  const [timezone, setTimezone] = useState(currentUser?.timezone || "UTC")
+  const [error, setError] = useState<string | null>(null)
+
+  useEffect(() => {
+    if (currentUser?.name) setName(currentUser.name)
+    if (currentUser?.timezone) setTimezone(currentUser.timezone)
+  }, [currentUser])
 
   const userInitials = currentUser?.name
     ? currentUser.name
@@ -21,7 +40,7 @@ export function ProfilePage({ currentUser, onLogout }: ProfilePageProps) {
         .toUpperCase()
     : currentUser?.email
       ? currentUser.email.slice(0, 2).toUpperCase()
-      : "DV"
+      : "U"
 
   const roleDisplay =
     currentUser?.role === "admin"
@@ -35,7 +54,39 @@ export function ProfilePage({ currentUser, onLogout }: ProfilePageProps) {
         month: "long",
         year: "numeric",
       })
-    : "March 2025"
+    : userSummary?.memberSince
+      ? new Date(userSummary.memberSince).toLocaleDateString("en-US", {
+          month: "long",
+          year: "numeric",
+        })
+      : "Recently"
+
+  const totalScans = userSummary?.totalScansRun ?? 0
+  const risksResolved = userSummary?.risksResolved ?? 0
+  const is2FA = Boolean(currentUser?.twoFactorEnabled)
+
+  const handleSave = async () => {
+    if (editing) {
+      setSaving(true)
+      setError(null)
+      try {
+        const updated = await authService.updateProfile({ name, timezone })
+        setEditing(false)
+        if (onProfileUpdated) onProfileUpdated(updated)
+      } catch (err: unknown) {
+        const message =
+          err && typeof err === "object" && "response" in err
+            ? (err as { response?: { data?: { message?: string } } }).response
+                ?.data?.message || "Failed to update profile"
+            : "Failed to update profile"
+        setError(message)
+      } finally {
+        setSaving(false)
+      }
+    } else {
+      setEditing(true)
+    }
+  }
 
   return (
     <section className="product-page profile-page">
@@ -50,16 +101,22 @@ export function ProfilePage({ currentUser, onLogout }: ProfilePageProps) {
           <p>
             Manage your identity, security, and contribution to safer releases.
           </p>
+          {error && (
+            <p style={{ color: "#ef525e", fontSize: "13px", marginTop: "6px" }}>
+              {error}
+            </p>
+          )}
         </div>
         <div style={{ display: "flex", gap: "10px" }}>
           <button
             className={editing ? "primary-button" : "secondary-button"}
-            onClick={() => setEditing(!editing)}
+            onClick={handleSave}
+            disabled={saving}
           >
             {editing ? (
               <>
                 <Icon name="check" />
-                Save profile
+                {saving ? "Saving..." : "Save profile"}
               </>
             ) : (
               "Edit profile"
@@ -85,17 +142,19 @@ export function ProfilePage({ currentUser, onLogout }: ProfilePageProps) {
             {userInitials}
             <span />
           </div>
-          <h2>{currentUser?.name || "Devon Rivera"}</h2>
-          <p>{currentUser?.email || "devon@acme.dev"}</p>
+          <h2>{currentUser?.name || "Account Member"}</h2>
+          <p>{currentUser?.email || "—"}</p>
           <span className="role-badge">{roleDisplay}</span>
           <div className="profile-stats">
             <div>
-              <strong>12</strong>
-              <span>scans run</span>
+              <strong>{totalScans}</strong>
+              <span>{totalScans === 1 ? "scan run" : "scans run"}</span>
             </div>
             <div>
-              <strong>7</strong>
-              <span>risks resolved</span>
+              <strong>{risksResolved}</strong>
+              <span>
+                {risksResolved === 1 ? "risk resolved" : "risks resolved"}
+              </span>
             </div>
           </div>
           <small>Member since {memberSince}</small>
@@ -113,7 +172,8 @@ export function ProfilePage({ currentUser, onLogout }: ProfilePageProps) {
               <span>Full name</span>
               <input
                 disabled={!editing}
-                value={editing ? name : currentUser?.name || "Devon Rivera"}
+                value={editing ? name : currentUser?.name || ""}
+                placeholder="Your full name"
                 onChange={(e) => setName(e.target.value)}
               />
             </label>
@@ -123,14 +183,33 @@ export function ProfilePage({ currentUser, onLogout }: ProfilePageProps) {
             </label>
             <label>
               <span>Email address</span>
-              <input disabled value={currentUser?.email || "devon@acme.dev"} />
+              <input disabled value={currentUser?.email || "—"} />
             </label>
             <label>
               <span>Timezone</span>
-              <select disabled={!editing} defaultValue="utc-8">
-                <option value="utc-8">Pacific Time (UTC−8)</option>
-                <option value="utc">UTC</option>
-                <option value="utc+1">Central European Time</option>
+              <select
+                disabled={!editing}
+                value={timezone}
+                onChange={(e) => setTimezone(e.target.value)}
+              >
+                <option value="UTC">UTC (Coordinated Universal Time)</option>
+                <option value="America/New_York">
+                  Eastern Time (US & Canada)
+                </option>
+                <option value="America/Chicago">
+                  Central Time (US & Canada)
+                </option>
+                <option value="America/Denver">
+                  Mountain Time (US & Canada)
+                </option>
+                <option value="America/Los_Angeles">
+                  Pacific Time (US & Canada)
+                </option>
+                <option value="Europe/London">London (GMT / BST)</option>
+                <option value="Europe/Paris">Paris, Berlin (CET / CEST)</option>
+                <option value="Asia/Kolkata">India Standard Time (IST)</option>
+                <option value="Asia/Tokyo">Japan Standard Time (JST)</option>
+                <option value="Australia/Sydney">Sydney (AEST / AEDT)</option>
               </select>
             </label>
           </div>
@@ -152,14 +231,18 @@ export function ProfilePage({ currentUser, onLogout }: ProfilePageProps) {
               <button>Change password</button>
             </div>
             <div>
-              <span className="security-icon lime">
-                <Icon name="check" />
+              <span className={`security-icon ${is2FA ? "lime" : ""}`}>
+                <Icon name={is2FA ? "check" : "shield"} />
               </span>
               <div>
                 <strong>Two-factor authentication</strong>
-                <p>Your account has an extra layer of security</p>
+                <p>
+                  {is2FA
+                    ? "Your account has an extra layer of security"
+                    : "Not enabled — protect your account with 2FA"}
+                </p>
               </div>
-              <button>Manage 2FA</button>
+              <button>{is2FA ? "Manage 2FA" : "Enable 2FA"}</button>
             </div>
             {onLogout && (
               <div
