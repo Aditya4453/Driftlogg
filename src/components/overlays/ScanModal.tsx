@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Icon } from "../common"
 
 interface ScanModalProps {
@@ -11,6 +11,7 @@ interface ScanModalProps {
     sourceType: "package_json" | "github_repo"
     repositoryUrl?: string
     packageJson?: Record<string, unknown>
+    packageLockJson?: Record<string, unknown>
   }) => void
 }
 
@@ -28,25 +29,74 @@ export function ScanModal({
   const [jsonText, setJsonText] = useState(
     '{\n  "dependencies": {\n    "react": "^19.0.0"\n  }\n}',
   )
+  const [isDragging, setIsDragging] = useState(false)
+  const [parsedPackageJson, setParsedPackageJson] =
+    useState<Record<string, unknown> | null>(null)
+  const [parsedPackageLockJson, setParsedPackageLockJson] =
+    useState<Record<string, unknown> | null>(null)
+  const [uploadedFiles, setUploadedFiles] = useState<{
+    pkgName?: string
+    lockName?: string
+    depCount?: number
+  } | null>(null)
+  const fileInputRef = useRef<HTMLInputElement>(null)
 
   if (!isOpen) return null
+
+  const handleFiles = (files: FileList | File[]) => {
+    const fileArray = Array.from(files)
+    fileArray.forEach((file) => {
+      const reader = new FileReader()
+      reader.onload = (e) => {
+        try {
+          const content = e.target?.result as string
+          const parsed = JSON.parse(content)
+          if (/package-lock\.json$/i.test(file.name)) {
+            setParsedPackageLockJson(parsed)
+            setUploadedFiles((prev) => ({
+              ...prev,
+              lockName: file.name,
+            }))
+          } else {
+            setParsedPackageJson(parsed)
+            setJsonText(content)
+            const depCount = Object.keys({
+              ...(parsed.dependencies || {}),
+              ...(parsed.devDependencies || {}),
+            }).length
+            setUploadedFiles((prev) => ({
+              ...prev,
+              pkgName: file.name,
+              depCount,
+            }))
+          }
+        } catch (err) {
+          console.error("Failed to parse JSON file", err)
+        }
+      }
+      reader.readAsText(file)
+    })
+  }
 
   const handleAnalyze = () => {
     if (inputMode === "github") {
       onRunScan({
         sourceType: "github_repo",
-        repositoryUrl: repoUrl,
+        repositoryUrl: repoUrl.trim(),
       })
     } else {
-      let parsed: Record<string, unknown> | undefined
-      try {
-        parsed = JSON.parse(jsonText)
-      } catch {
-        parsed = { raw: jsonText }
+      let packageJson = parsedPackageJson
+      if (!packageJson) {
+        try {
+          packageJson = JSON.parse(jsonText)
+        } catch {
+          packageJson = { raw: jsonText }
+        }
       }
       onRunScan({
         sourceType: "package_json",
-        packageJson: parsed,
+        packageJson: packageJson || undefined,
+        packageLockJson: parsedPackageLockJson || undefined,
       })
     }
   }
@@ -95,6 +145,7 @@ export function ScanModal({
               <input
                 value={repoUrl}
                 onChange={(e) => setRepoUrl(e.target.value)}
+                placeholder="https://github.com/organization/repository (or /tree/main/subfolder)"
               />
               <span>
                 <Icon name="check" size={13} />
@@ -117,21 +168,84 @@ export function ScanModal({
           </div>
         ) : (
           <div className="form-area">
-            <div className="drop-zone">
+            <input
+              ref={fileInputRef}
+              type="file"
+              accept=".json,application/json"
+              multiple
+              style={{ display: "none" }}
+              onChange={(e) => e.target.files && handleFiles(e.target.files)}
+            />
+            <div
+              className={`drop-zone ${isDragging ? "active-drop" : ""}`}
+              onClick={() => fileInputRef.current?.click()}
+              onDragOver={(e) => {
+                e.preventDefault()
+                setIsDragging(true)
+              }}
+              onDragLeave={(e) => {
+                e.preventDefault()
+                setIsDragging(false)
+              }}
+              onDrop={(e) => {
+                e.preventDefault()
+                setIsDragging(false)
+                if (e.dataTransfer.files) handleFiles(e.dataTransfer.files)
+              }}
+            >
               <div className="upload-icon">
                 <Icon name="upload" />
               </div>
-              <strong>Drop package.json here</strong>
-              <p>
-                or <span>browse your files</span> · Max 5 MB
-              </p>
+              {uploadedFiles ? (
+                <div className="drop-zone-loaded">
+                  <strong style={{ color: "#f2f5f9" }}>Manifests Loaded</strong>
+                  <div
+                    style={{
+                      display: "flex",
+                      gap: "6px",
+                      flexWrap: "wrap",
+                      justifyContent: "center",
+                      marginTop: "4px",
+                    }}
+                  >
+                    {uploadedFiles.pkgName && (
+                      <span className="file-badge-pill">
+                        <Icon name="check" size={12} />
+                        {uploadedFiles.pkgName}{" "}
+                        {uploadedFiles.depCount !== undefined
+                          ? `(${uploadedFiles.depCount} deps)`
+                          : ""}
+                      </span>
+                    )}
+                    {uploadedFiles.lockName && (
+                      <span className="file-badge-pill">
+                        <Icon name="check" size={12} />
+                        {uploadedFiles.lockName}
+                      </span>
+                    )}
+                  </div>
+                  <p style={{ marginTop: "6px", fontSize: "11px" }}>
+                    Click or drop files to replace
+                  </p>
+                </div>
+              ) : (
+                <>
+                  <strong>Drop package.json & package-lock.json here</strong>
+                  <p>
+                    or <span>browse your files</span> · Max 5 MB
+                  </p>
+                </>
+              )}
             </div>
             <div className="paste-divider">
               <span>or paste JSON</span>
             </div>
             <textarea
               value={jsonText}
-              onChange={(e) => setJsonText(e.target.value)}
+              onChange={(e) => {
+                setJsonText(e.target.value)
+                setParsedPackageJson(null)
+              }}
             />
           </div>
         )}

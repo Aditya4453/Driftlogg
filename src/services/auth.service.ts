@@ -1,25 +1,31 @@
 import apiClient from "./apiClient"
-import type { User } from "../types"
+
+import type { User, UserSummary } from "../types"
 
 export interface RegisterPayload {
   name: string
+
   email: string
+
   password?: string
 }
 
 export interface LoginPayload {
   email: string
+
   password?: string
 }
 
 export const authService = {
   async register(data: RegisterPayload): Promise<User> {
     const response = await apiClient.post<User>("/auth/register", data)
+
     return response.data
   },
 
   async login(data: LoginPayload): Promise<User> {
     const response = await apiClient.post<User>("/auth/login", data)
+
     return response.data
   },
 
@@ -34,10 +40,30 @@ export const authService = {
   async getMe(): Promise<User | null> {
     try {
       const response = await apiClient.get<User>("/auth/me")
+
       return response.data
     } catch {
       return null
     }
+  },
+
+  async getSummary(): Promise<UserSummary | null> {
+    try {
+      const response = await apiClient.get<UserSummary>("/auth/summary")
+
+      return response.data
+    } catch {
+      return null
+    }
+  },
+
+  async updateProfile(data: {
+    name?: string
+    timezone?: string
+  }): Promise<User> {
+    const response = await apiClient.patch<User>("/auth/profile", data)
+
+    return response.data
   },
 }
 

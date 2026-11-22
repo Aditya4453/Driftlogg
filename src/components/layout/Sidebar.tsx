@@ -6,16 +6,27 @@ interface SidebarProps {
   menuOpen: boolean
   projectCount?: number
   isAdmin?: boolean
+  monthlyScansUsed?: number
+  monthlyScanLimit?: number
+  daysUntilReset?: number
   onNavigate: (targetPage: Page) => void
 }
 
 export function Sidebar({
   page,
   menuOpen,
-  projectCount = 4,
+  projectCount = 0,
   isAdmin = true,
+  monthlyScansUsed = 0,
+  monthlyScanLimit = 25,
+  daysUntilReset = 30,
   onNavigate,
 }: SidebarProps) {
+  const scanPercent = Math.min(
+    100,
+    Math.round((monthlyScansUsed / (monthlyScanLimit || 1)) * 100),
+  )
+
   return (
     <aside className={`sidebar ${menuOpen ? "open" : ""}`}>
       <nav>
@@ -54,12 +65,16 @@ export function Sidebar({
         <div className="usage">
           <div>
             <span>Monthly scans</span>
-            <strong>12 / 25</strong>
+            <strong>
+              {monthlyScansUsed} / {monthlyScanLimit}
+            </strong>
           </div>
           <div className="usage-track">
-            <i />
+            <i style={{ width: `${scanPercent}%` }} />
           </div>
-          <small>Resets in 18 days</small>
+          <small>
+            Resets in {daysUntilReset} {daysUntilReset === 1 ? "day" : "days"}
+          </small>
         </div>
         <button
           className={page === "settings" ? "active" : ""}

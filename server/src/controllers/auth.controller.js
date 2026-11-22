@@ -1,33 +1,75 @@
-import { registerUser, verifyCredentials } from "../services/user.service.js"
+import {
+  getUserSummary,
+  registerUser,
+  updateUserProfile,
+  verifyCredentials,
+} from "../services/user.service.js"
+
 import { clearTokenCookie, sendTokenCookie } from "../utils/token.js"
 
 // POST /api/auth/register -> 201 + user (no password), sets the token cookie
+
 export async function register(req, res) {
   const { name, email, password } = req.body || {}
+
   if (!name || !email || !password) {
-    return res.status(400).json({ message: "Name, email and password are required" })
+    return res
+      .status(400)
+      .json({ message: "Name, email and password are required" })
   }
+
   const user = await registerUser({ name, email, password }) // duplicate email -> 400
+
   sendTokenCookie(res, user)
+
   res.status(201).json(user) // toJSON removes the password hash
 }
 
 // POST /api/auth/login -> 200 + user, sets the token cookie
+
 export async function login(req, res) {
   const { email, password } = req.body || {}
+
   const user = await verifyCredentials(email, password)
-  if (!user) return res.status(401).json({ message: "Invalid email or password" })
+
+  if (!user)
+    return res.status(401).json({ message: "Invalid email or password" })
+
   sendTokenCookie(res, user)
+
   res.status(200).json(user)
 }
 
 // POST /api/auth/logout -> clears the cookie
+
 export function logout(_req, res) {
   clearTokenCookie(res)
+
   res.status(200).json({ message: "Logged out successfully" })
 }
 
 // GET /api/auth/me -> current user (requireAuth already loaded it without password)
+
 export function me(req, res) {
   res.status(200).json(req.user)
+}
+
+// GET /api/auth/summary -> live account and workspace stats
+export async function summary(req, res, next) {
+  try {
+    const data = await getUserSummary(req.user)
+    res.status(200).json(data)
+  } catch (err) {
+    next(err)
+  }
+}
+
+// PATCH /api/auth/profile -> update name, timezone
+export async function updateProfile(req, res, next) {
+  try {
+    const updated = await updateUserProfile(req.user._id, req.body || {})
+    res.status(200).json(updated)
+  } catch (err) {
+    next(err)
+  }
 }

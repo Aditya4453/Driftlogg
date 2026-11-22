@@ -1,30 +1,47 @@
 import { Icon, Logo } from "../common"
+
 import type { User } from "../../types"
 
 interface TopbarProps {
   currentUser?: User | null
+
   menuOpen: boolean
+
   onToggleMenu: () => void
+
   onGoDashboard: () => void
+
   onOpenSettings: () => void
+
   onOpenProfile: () => void
 }
 
 export function Topbar({
   currentUser,
+
   menuOpen,
+
   onToggleMenu,
+
   onGoDashboard,
+
   onOpenSettings,
+
   onOpenProfile,
 }: TopbarProps) {
   const userInitials = currentUser?.name
     ? currentUser.name
+
         .split(" ")
+
         .filter(Boolean)
+
         .map((part) => part[0])
+
         .join("")
+
         .slice(0, 2)
+
         .toUpperCase()
     : currentUser?.email
       ? currentUser.email.slice(0, 2).toUpperCase()
